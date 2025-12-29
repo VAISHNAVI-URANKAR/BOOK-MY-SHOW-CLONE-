@@ -1,11 +1,21 @@
-import { Search, Menu, X } from "lucide-react";
+import { Search, Menu, X, User, LogOut } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const navLinks = [
     { label: "Movies", href: "#movies" },
@@ -14,12 +24,17 @@ const Header = () => {
     { label: "Sports", href: "#sports" },
   ];
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-lg">B</span>
             </div>
@@ -60,8 +75,29 @@ const Header = () => {
               <Search className="w-5 h-5" />
             </Button>
 
-            {/* Sign In Button */}
-            <Button className="hidden sm:flex">Sign In</Button>
+            {/* Auth Button / User Menu */}
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="icon" className="rounded-full">
+                    <User className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem className="text-muted-foreground text-sm">
+                    {user.email}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button className="hidden sm:flex" onClick={() => navigate('/auth')}>
+                Sign In
+              </Button>
+            )}
 
             {/* Mobile Menu Toggle */}
             <Button
@@ -104,7 +140,16 @@ const Header = () => {
                   {link.label}
                 </a>
               ))}
-              <Button className="mt-2 sm:hidden">Sign In</Button>
+              {!user && (
+                <Button className="mt-2 sm:hidden" onClick={() => navigate('/auth')}>
+                  Sign In
+                </Button>
+              )}
+              {user && (
+                <Button variant="destructive" className="mt-2 sm:hidden" onClick={handleSignOut}>
+                  Sign Out
+                </Button>
+              )}
             </div>
           </nav>
         )}
