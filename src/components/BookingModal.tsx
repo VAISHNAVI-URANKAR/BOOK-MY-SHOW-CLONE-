@@ -60,12 +60,15 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
 
     const showDate = format(dates[selectedDate], 'yyyy-MM-dd');
     
+    // Generate seat labels like A1, A2, etc. based on number of seats
+    const seatLabels = Array.from({ length: seats }, (_, i) => `A${i + 1}`);
+    
     const { success, bookingId } = await createBooking({
       movieId: movie.id,
       movieTitle: movie.title,
       showDate,
       showTime: selectedTime,
-      seats,
+      seats: seatLabels,
       totalAmount,
     });
 
