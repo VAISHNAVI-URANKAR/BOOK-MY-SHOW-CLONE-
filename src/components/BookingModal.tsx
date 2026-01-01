@@ -7,8 +7,9 @@ import { Movie } from '@/hooks/useMovies';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, Users } from 'lucide-react';
+import { Calendar, Users, MapPin } from 'lucide-react';
 
 interface BookingModalProps {
   movie: Movie;
@@ -16,23 +17,69 @@ interface BookingModalProps {
   onClose: () => void;
 }
 
-const TICKET_PRICE = 250; // Price per ticket
-const SHOW_TIMES = ['10:00 AM', '1:30 PM', '5:00 PM', '8:30 PM', '11:00 PM'];
+interface Hall {
+  id: string;
+  name: string;
+  location: string;
+  showtimes: string[];
+}
+
+const TICKET_PRICE = 250;
+
+// Mock halls data - in production this would come from the database
+const HALLS: Hall[] = [
+  {
+    id: '1',
+    name: 'PVR Cinemas',
+    location: 'Phoenix Mall, Kurla',
+    showtimes: ['10:00 AM', '1:30 PM', '5:00 PM', '8:30 PM', '11:00 PM'],
+  },
+  {
+    id: '2',
+    name: 'INOX',
+    location: 'R-City Mall, Ghatkopar',
+    showtimes: ['9:30 AM', '12:45 PM', '4:15 PM', '7:45 PM', '10:30 PM'],
+  },
+  {
+    id: '3',
+    name: 'Cinepolis',
+    location: 'Viviana Mall, Thane',
+    showtimes: ['11:00 AM', '2:30 PM', '6:00 PM', '9:15 PM'],
+  },
+  {
+    id: '4',
+    name: 'Carnival Cinemas',
+    location: 'Imax Wadala',
+    showtimes: ['10:30 AM', '1:45 PM', '5:30 PM', '8:45 PM', '11:30 PM'],
+  },
+];
 
 const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
-  const [selectedDate, setSelectedDate] = useState(0);
-  const [selectedTime, setSelectedTime] = useState('');
   const [seats, setSeats] = useState(1);
+  const [selectedDate, setSelectedDate] = useState<number | null>(null);
+  const [selectedHall, setSelectedHall] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
   
   const { user } = useAuth();
   const { setBookingDetails } = useBookingContext();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Generate next 7 days for date selection
-  const dates = Array.from({ length: 7 }, (_, i) => addDays(new Date(), i));
+  // Generate next 14 days for date selection
+  const dates = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
 
   const totalAmount = seats * TICKET_PRICE;
+
+  const handleDateSelect = (index: number) => {
+    setSelectedDate(index);
+    setSelectedHall(null);
+    setSelectedTime(null);
+  };
+
+  const handleTimeSelect = (hallId: string, time: string) => {
+    setSelectedHall(hallId);
+    setSelectedTime(time);
+  };
 
   const handleProceedToPayment = () => {
     if (!user) {
@@ -46,10 +93,10 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
       return;
     }
 
-    if (!selectedTime) {
+    if (selectedDate === null || !selectedTime || !selectedHall) {
       toast({
-        title: 'Select Show Time',
-        description: 'Please select a show time.',
+        title: 'Complete Selection',
+        description: 'Please select date, hall, and showtime.',
         variant: 'destructive',
       });
       return;
@@ -57,31 +104,31 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
 
     const showDate = format(dates[selectedDate], 'yyyy-MM-dd');
     const seatLabels = Array.from({ length: seats }, (_, i) => `A${i + 1}`);
+    const hall = HALLS.find(h => h.id === selectedHall);
 
-    // Set booking details in context
     setBookingDetails({
       movie,
       showDate,
-      showTime: selectedTime,
+      showTime: `${selectedTime} - ${hall?.name}`,
       seats: seatLabels,
       totalAmount,
     });
 
-    // Close modal and navigate to payment page
     onClose();
     navigate('/payment');
   };
 
   const handleClose = () => {
-    setSelectedTime('');
     setSeats(1);
-    setSelectedDate(0);
+    setSelectedDate(null);
+    setSelectedHall(null);
+    setSelectedTime(null);
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg bg-card border-border">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-xl text-foreground">
             Book Tickets - {movie.title}
@@ -89,54 +136,6 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
-          {/* Date Selection */}
-          <div className="space-y-3">
-            <Label className="text-foreground flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Select Date
-            </Label>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {dates.map((date, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedDate(index)}
-                  className={`flex flex-col items-center min-w-[4.5rem] p-3 rounded-lg border transition-all ${
-                    selectedDate === index
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-secondary text-muted-foreground hover:border-primary/50'
-                  }`}
-                >
-                  <span className="text-xs font-medium">{format(date, 'EEE')}</span>
-                  <span className="text-lg font-bold">{format(date, 'd')}</span>
-                  <span className="text-xs">{format(date, 'MMM')}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Time Selection */}
-          <div className="space-y-3">
-            <Label className="text-foreground flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Select Show Time
-            </Label>
-            <div className="grid grid-cols-3 gap-2">
-              {SHOW_TIMES.map((time) => (
-                <button
-                  key={time}
-                  onClick={() => setSelectedTime(time)}
-                  className={`p-3 rounded-lg border text-sm font-medium transition-all ${
-                    selectedTime === time
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-secondary text-muted-foreground hover:border-primary/50'
-                  }`}
-                >
-                  {time}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Seats Selection */}
           <div className="space-y-3">
             <Label className="text-foreground flex items-center gap-2">
@@ -167,15 +166,119 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
             </div>
           </div>
 
-          {/* Proceed Button */}
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleProceedToPayment}
-            disabled={!selectedTime}
-          >
-            Proceed to Payment
-          </Button>
+          {/* Horizontal Date Selection */}
+          <div className="space-y-3">
+            <Label className="text-foreground flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Select Date
+            </Label>
+            <ScrollArea className="w-full whitespace-nowrap">
+              <div className="flex gap-2 pb-3">
+                {dates.map((date, index) => {
+                  const isToday = index === 0;
+                  const isTomorrow = index === 1;
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleDateSelect(index)}
+                      className={`flex flex-col items-center min-w-[5rem] p-3 rounded-xl border-2 transition-all shrink-0 ${
+                        selectedDate === index
+                          ? 'border-primary bg-primary/10 text-primary shadow-lg shadow-primary/20'
+                          : 'border-border bg-secondary/50 text-muted-foreground hover:border-primary/50 hover:bg-secondary'
+                      }`}
+                    >
+                      <span className="text-[10px] font-medium uppercase tracking-wider">
+                        {isToday ? 'Today' : isTomorrow ? 'Tomorrow' : format(date, 'EEE')}
+                      </span>
+                      <span className="text-2xl font-bold mt-0.5">{format(date, 'd')}</span>
+                      <span className="text-xs mt-0.5">{format(date, 'MMM')}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+
+          {/* Halls & Showtimes */}
+          {selectedDate !== null && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <Label className="text-foreground flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                Select Hall & Showtime
+              </Label>
+              
+              <div className="space-y-4">
+                {HALLS.map((hall) => (
+                  <div 
+                    key={hall.id}
+                    className="p-4 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                      <div>
+                        <h4 className="font-semibold text-foreground">{hall.name}</h4>
+                        <p className="text-sm text-muted-foreground">{hall.location}</p>
+                      </div>
+                    </div>
+                    
+                    <ScrollArea className="w-full">
+                      <div className="flex gap-2 pb-2">
+                        {hall.showtimes.map((time) => {
+                          const isSelected = selectedHall === hall.id && selectedTime === time;
+                          return (
+                            <button
+                              key={time}
+                              onClick={() => handleTimeSelect(hall.id, time)}
+                              className={`px-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-all shrink-0 ${
+                                isSelected
+                                  ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/30'
+                                  : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-primary/5'
+                              }`}
+                            >
+                              {time}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Selection Summary & Proceed Button */}
+          <div className="pt-4 border-t border-border space-y-4">
+            {selectedDate !== null && selectedTime && selectedHall && (
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 animate-in fade-in duration-200">
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Your Selection</h4>
+                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                  <span className="text-foreground">
+                    <span className="text-muted-foreground">Date:</span> {format(dates[selectedDate], 'EEE, MMM d')}
+                  </span>
+                  <span className="text-foreground">
+                    <span className="text-muted-foreground">Time:</span> {selectedTime}
+                  </span>
+                  <span className="text-foreground">
+                    <span className="text-muted-foreground">Hall:</span> {HALLS.find(h => h.id === selectedHall)?.name}
+                  </span>
+                  <span className="text-foreground">
+                    <span className="text-muted-foreground">Seats:</span> {seats}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleProceedToPayment}
+              disabled={selectedDate === null || !selectedTime || !selectedHall}
+            >
+              Proceed to Payment - ₹{totalAmount}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
