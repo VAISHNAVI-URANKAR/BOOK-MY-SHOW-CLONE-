@@ -8,7 +8,7 @@ interface CreateBookingParams {
   movieTitle: string;
   showDate: string;
   showTime: string;
-  seats: number;
+  seats: string[];
   totalAmount: number;
 }
 
@@ -45,7 +45,7 @@ export function useBookings() {
           movie_id: movieId,
           show_date: showDate,
           show_time: showTime,
-          seats,
+          seats: seats,
           total_amount: totalAmount,
           payment_status: 'pending',
           booking_status: 'confirmed',

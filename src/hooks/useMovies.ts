@@ -4,15 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Movie {
   id: string;
   title: string;
-  poster_url: string;
-  banner_url: string | null;
-  rating: number;
-  duration: string;
-  release_date: string | null;
   description: string | null;
-  trailer_url: string | null;
-  is_featured: boolean;
-  is_available: boolean;
+  poster_url: string | null;
+  backdrop_url: string | null;
+  rating: number | null;
+  duration_minutes: number | null;
+  release_date: string | null;
+  is_featured: boolean | null;
+  is_now_showing: boolean | null;
+  created_at: string;
+  updated_at: string;
   genres: string[];
   languages: string[];
 }
@@ -50,7 +51,7 @@ export function useMovies() {
       const { data: moviesData, error: moviesError } = await supabase
         .from('movies')
         .select('*')
-        .eq('is_available', true)
+        .eq('is_now_showing', true)
         .order('created_at', { ascending: false });
 
       if (moviesError) throw moviesError;
@@ -70,7 +71,7 @@ export function useMovies() {
       if (languagesError) throw languagesError;
 
       // Combine the data
-      const combinedMovies = (moviesData || []).map(movie => ({
+      const combinedMovies: Movie[] = (moviesData || []).map(movie => ({
         ...movie,
         genres: (genresData || [])
           .filter(g => g.movie_id === movie.id)

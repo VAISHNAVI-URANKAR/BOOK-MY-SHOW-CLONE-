@@ -48,7 +48,7 @@ const MovieCard = ({ movie, index }: MovieCardProps) => {
           
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
             <Clock className="w-3 h-3" />
-            <span>{movie.duration}</span>
+            <span>{movie.duration_minutes ? `${movie.duration_minutes} min` : 'TBA'}</span>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
